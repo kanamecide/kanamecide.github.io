@@ -13,164 +13,196 @@
     />
     <style>
       #mainTitle {
-        font-size: 32px;
-        font-family: 'Pixelify Sans', sans-serif;
+        font-size: clamp(22px, 8vw, 32px);
+        font-family: "Pixelify Sans", sans-serif;
         margin-bottom: 8px;
+        overflow-wrap: anywhere;
       }
-
       #subTitle {
-        font-size: 18px;
-        font-family: 'Pixelify Sans', sans-serif;
+        font-size: clamp(15px, 4.6vw, 18px);
+        font-family: "Pixelify Sans", sans-serif;
         color: #555;
       }
     </style>
   </head>
+
   <body>
     <div class="container">
       <div id="birthdayText"></div>
-      <div class="cake-container">
+
+      <div class="cake-container" id="cakeContainer">
+        <!-- Senin pasta CSS'in -->
         <div class="cake" id="cake"></div>
+        <!-- Mumlar JS ile buraya eklenir -->
+        <div class="candles" id="candles"></div>
       </div>
     </div>
 
     <script>
-      // Read URL params
+      // ---- URL parametreleri: ?name=Ayşe&candles=8 ----
       const params = new URLSearchParams(window.location.search);
       const name = params.get("name") || "Friend";
       let candleCount = parseInt(params.get("candles")) || 4;
       candleCount = Math.min(Math.max(candleCount, 1), 30);
 
+      // textContent kullanıldı (URL'den gelen ismi innerHTML'e basmak XSS açığı olur)
       const birthdayText = document.getElementById("birthdayText");
-      birthdayText.innerHTML = `
-        <div id="mainTitle">Happy Birthday, ${name}!</div>
-        <div id="subTitle">Make a wish and blow candles.</div>
-      `;
+      const mainTitle = document.createElement("div");
+      mainTitle.id = "mainTitle";
+      mainTitle.textContent = `Happy Birthday, ${name}!`;
+      const subTitle = document.createElement("div");
+      subTitle.id = "subTitle";
+      subTitle.textContent = "Make a wish and blow candles.";
+      birthdayText.append(mainTitle, subTitle);
 
-      const cake = document.getElementById("cake");
+      // ---- Mumları oluştur ----
+      // Koordinatlar pasta piksel-art'ının kendi birimlerinde (150x100).
+      // Pasta kubbesinin üstü yaklaşık x:35–110, y:45 civarı.
+      const layer = document.getElementById("candles");
+      const container = document.getElementById("cakeContainer");
+      const CAKE_LEFT = 38; // mumların yayılacağı aralık: pastanın ön yüzü (pasta birimi)
+      const CAKE_RIGHT = 107;
+      const CANDLE_BASE_Y = 90; // ön sıranın tabanı: pastanın önünde, tabağın üstünde
+      const ORIGIN_X = 57.5; // mum sprite'ının taban ortası (CSS'teki transform-origin)
+      const ORIGIN_Y = 95;
+      const SPRITE_H = 85; // mum sprite yüksekliği (alev dahil)
+      let SCALE = 2; // CSS'teki --s (pasta ölçeği); fitScale() günceller
+      let topMost = 0; // en yukarıdaki alevin y'si (pasta birimi)
 
-      const colors = [
-        "green-candle",
-        "purple-candle",
-        "blue-candle",
-        "yellow-candle",
-      ];
-      const CAKE_VISUAL_WIDTH = 35;
+      // Pastayı ekrana sığdır: genişliğe ve yüksekliğe göre, 0.2'lik adımlarla (piksel net kalsın)
+      function fitScale() {
+        const w = (window.innerWidth - 24) / 135; // pasta resmi 135 birim geniş
+        const h = (window.innerHeight - 170) / 90; // başlık + mum payı
+        const s = Math.min(w, h, 3);
+        SCALE = Math.max(1.2, Math.floor(s * 5) / 5);
+        document.documentElement.style.setProperty("--s", SCALE);
+        container.style.marginTop = `${Math.max(20, 20 - (topMost - 10) * SCALE)}px`;
+      }
+      window.addEventListener("resize", fitScale); // telefon yatay/dikey çevrilince
 
-      function createCandles(count) {
-        cake.innerHTML = "";
-        const CANDLE_VISUAL_WIDTH = 2;
-        const availableWidth = CAKE_VISUAL_WIDTH;
-        const candlesPerRow = 6;
-        const rowCount = Math.ceil(count / candlesPerRow);
-        const shiftAmount = 4;
-
-        for (let i = 0; i < count; i++) {
-          const candle = document.createElement("div");
-          candle.classList.add("candle");
-          const colorClass = colors[Math.floor(Math.random() * colors.length)];
-          candle.classList.add(colorClass);
-
-          const row = Math.floor(i / candlesPerRow);
-          const col = i % candlesPerRow;
-          const totalCandlesInRow = Math.min(
-            candlesPerRow,
-            count - row * candlesPerRow
-          );
-          const rowSpacing = availableWidth / (totalCandlesInRow + 1);
-
-          const leftBase = rowSpacing * (col + 1) - CANDLE_VISUAL_WIDTH / 2 + 5;
-          const rowShift = row % 2 === 0 ? 0 : shiftAmount;
-
-          candle.style.position = "absolute";
-          candle.style.top = `${10 + row * 3}px`;
-          candle.style.left = `${leftBase - rowShift + 4}px`;
-
-          cake.appendChild(candle);
-        }
+      // Mum sayısı arttıkça mumlar küçülür ki pastanın önüne sığsınlar
+      function layoutFor(count) {
+        if (count <= 4) return { s: 0.4, perRow: 4 }; // 4px piksel
+        if (count <= 12) return { s: 0.3, perRow: 6 }; // 3px piksel
+        return { s: 0.2, perRow: 9 }; // 2px piksel
       }
 
+      function createCandles(count) {
+        layer.innerHTML = "";
+        const { s, perRow } = layoutFor(count);
+        const rowLift = 20 * s; // arkadaki sıra yukarıda: alevler birbirini kapatmasın
+        const rows = Math.ceil(count / perRow);
+
+        // En yukarıdaki alev pasta alanının dışına taşarsa üstte yer aç
+        topMost = CANDLE_BASE_Y - (rows - 1) * rowLift - SPRITE_H * s;
+        fitScale();
+
+        for (let i = 0; i < count; i++) {
+          const row = Math.floor(i / perRow);
+          const col = i % perRow;
+          const inRow = Math.min(perRow, count - row * perRow);
+
+          // Aralığa eşit dağıt; her ikinci sıra yarım adım kayık dursun
+          const span = CAKE_RIGHT - CAKE_LEFT;
+          const step = span / (inRow + 1);
+          const cx = CAKE_LEFT + step * (col + 1) + (row % 2 ? step / 3 : 0);
+          const baseY = CANDLE_BASE_Y - row * rowLift;
+
+          const candle = document.createElement("div");
+          candle.classList.add("candle");
+          candle.style.transform = `scale(${s})`;
+          candle.style.left = `${cx - ORIGIN_X}px`;
+          candle.style.top = `${baseY - ORIGIN_Y}px`;
+          candle.style.zIndex = String(100 - row); // ön sıra önde
+          candle.style.setProperty("--delay", `-${Math.random().toFixed(2)}s`);
+          layer.appendChild(candle);
+        }
+      }
       createCandles(candleCount);
 
-      // === Microphone / Blow Detection ===
+      // ---- Üfleme ----
+      let blown = false;
+
+      function blowOutCandles() {
+        if (blown) return;
+        blown = true;
+
+        // Alev animasyonu 1 sn'lik döngü; son iki kare: kıvılcım (%67–83) ve alevsiz (%83–100)
+        function freezeAt(candle, ms) {
+          const anim = candle.getAnimations()[0];
+          if (!anim) return;
+          candle.style.animationDelay = "0s";
+          anim.effect.updateTiming({ delay: 0 });
+          anim.pause();
+          anim.currentTime = ms;
+        }
+
+        document.querySelectorAll(".candle").forEach((candle) => {
+          const delay = Math.random() * 1000;
+          setTimeout(() => {
+            candle.classList.add("blowing");
+            freezeAt(candle, 750); // kıvılcım karesi
+            setTimeout(() => {
+              candle.classList.remove("blowing");
+              candle.classList.add("blown");
+              freezeAt(candle, 950); // alevsiz kare
+            }, 250);
+          }, delay);
+        });
+
+        setTimeout(() => {
+          subTitle.textContent = "Yayy! Wishing you the happiest birthday ever!! 🎉";
+        }, 1200);
+      }
+
+      // ---- Mikrofon ile üfleme algılama ----
       async function startMicDetection() {
         try {
-          const stream = await navigator.mediaDevices.getUserMedia({
-            audio: true,
-          });
-          const audioContext = new (window.AudioContext ||
-            window.webkitAudioContext)();
+          const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+          const audioContext = new (window.AudioContext || window.webkitAudioContext)();
           const source = audioContext.createMediaStreamSource(stream);
           const analyser = audioContext.createAnalyser();
           analyser.fftSize = 512;
-
           source.connect(analyser);
+          if (audioContext.state === "suspended") {
+            await audioContext.resume().catch(() => {});
+          }
+          if (audioContext.state === "suspended") {
+            subTitle.textContent = "Make a wish, then tap the cake to blow out the candles!";
+          }
 
           const dataArray = new Uint8Array(analyser.frequencyBinCount);
-
-          let blown = false;
 
           function detectBlow() {
             analyser.getByteFrequencyData(dataArray);
 
             let highFreqSum = 0;
             let lowFreqSum = 0;
-
             const midpoint = dataArray.length / 2;
-
             for (let i = 0; i < dataArray.length; i++) {
-              if (i < midpoint) {
-                lowFreqSum += dataArray[i];
-              } else {
-                highFreqSum += dataArray[i];
-              }
+              if (i < midpoint) lowFreqSum += dataArray[i];
+              else highFreqSum += dataArray[i];
             }
 
             const highAvg = highFreqSum / (dataArray.length / 2);
             const lowAvg = lowFreqSum / (dataArray.length / 2);
-
             const ratio = highAvg / (lowAvg + 1);
 
             const BLOW_RATIO_THRESHOLD = 0.5;
-
             if (ratio > BLOW_RATIO_THRESHOLD && !blown) {
-              blown = true;
               blowOutCandles();
             }
-
             requestAnimationFrame(detectBlow);
           }
-
           detectBlow();
         } catch (err) {
           console.error("Mic access error:", err);
+          subTitle.textContent = "Mic not available — tap the cake to blow out the candles!";
         }
       }
 
-      function blowOutCandles() {
-        const candles = document.querySelectorAll(".candle");
-        candles.forEach((candle) => {
-          const delay = Math.random() * 1000;
-          setTimeout(() => {
-            colors.forEach((color) => {
-              if (candle.classList.contains(color)) {
-                candle.classList.add("blown");
-              }
-            });
-          }, delay);
-        });
-
-        // Update subTitle after short delay
-        setTimeout(() => {
-          const subTitle = document.getElementById("subTitle");
-          subTitle.textContent = `Yayy! Wishing you the happiest birthday ever!! 🎉`;
-        }, 1200);
-      }
-
-      startMicDetection();
-    </script>
-  </body>
-</html>
-
+      // Mikrofon yoksa/izin verilmediyse pastaya tıklayarak da üflenebilir
+      document.body.addEventListener("click", blowOutCandles); // sayfanın herhangi bir yerine dokun
 
       startMicDetection();
     </script>
