@@ -58,11 +58,11 @@
 
       function createCandles(count) {
         cake.innerHTML = "";
-        const CANDLE_VISUAL_WIDTH = 1.5;
+        const CANDLE_VISUAL_WIDTH = 2;
         const availableWidth = CAKE_VISUAL_WIDTH;
         const candlesPerRow = 4;
         const rowCount = Math.ceil(count / candlesPerRow);
-        const shiftAmount = 1;
+        const shiftAmount = 2;
 
         for (let i = 0; i < count; i++) {
           const candle = document.createElement("div");
