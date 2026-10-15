@@ -43,14 +43,14 @@
       let candleCount = parseInt(params.get("candles")) || 4;
       candleCount = Math.min(Math.max(candleCount, 1), 30);
 
-      // textContent kullanıldı (URL'den gelen ismi innerHTML'e basmak XSS açığı olur)
+      
       const birthdayText = document.getElementById("birthdayText");
       const mainTitle = document.createElement("div");
       mainTitle.id = "mainTitle";
       mainTitle.textContent = `Happy Birthday, ${name}!`;
       birthdayText.append(mainTitle);
 
-      // ---- Mektup ----  (?name=Ayşe&from=Mehmet)
+      // ---- mektup ---- 
       const hasName = params.has("name") && params.get("name").trim() !== "";
       const from = (params.get("from") || "").trim();
       const letterParagraphs = [
@@ -76,7 +76,7 @@
       sign.textContent = from ? `Sevgiyle\n${from}` : "Selin,";
       letter.appendChild(sign);
 
-      // ---- Mumları oluştur ----
+      // ---- mumları oluştur ----
       // Koordinatlar pasta piksel-art'ının kendi birimlerinde (150x100).
       // Pasta kubbesinin üstü yaklaşık x:35–110, y:45 civarı.
       const layer = document.getElementById("candles");
