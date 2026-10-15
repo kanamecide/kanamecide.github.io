@@ -14,147 +14,157 @@
     <style>
       #mainTitle {
         font-size: 32px;
-        font-family: "Pixelify Sans", sans-serif;
+        font-family: 'Pixelify Sans', sans-serif;
         margin-bottom: 8px;
       }
+
       #subTitle {
         font-size: 18px;
-        font-family: "Pixelify Sans", sans-serif;
+        font-family: 'Pixelify Sans', sans-serif;
         color: #555;
       }
     </style>
   </head>
-
   <body>
     <div class="container">
       <div id="birthdayText"></div>
-
-      <div class="cake-container" id="cakeContainer">
-        <!-- mum css -->
-        <div class="candles" id="candles"></div>
-        <!-- pasta css -->
+      <div class="cake-container">
         <div class="cake" id="cake"></div>
       </div>
     </div>
 
     <script>
-      // ---- URL parametreleri: ?name=Ayşe&candles=8 ----
+      // Read URL params
       const params = new URLSearchParams(window.location.search);
       const name = params.get("name") || "Friend";
       let candleCount = parseInt(params.get("candles")) || 4;
       candleCount = Math.min(Math.max(candleCount, 1), 30);
 
-      // textContent kullanıldı (URL'den gelen ismi innerHTML'e basmak XSS açığı olur)
       const birthdayText = document.getElementById("birthdayText");
-      const mainTitle = document.createElement("div");
-      mainTitle.id = "mainTitle";
-      mainTitle.textContent = `Happy Birthday, ${name}!`;
-      const subTitle = document.createElement("div");
-      subTitle.id = "subTitle";
-      subTitle.textContent = "Make a wish and blow candles.";
-      birthdayText.append(mainTitle, subTitle);
+      birthdayText.innerHTML = `
+        <div id="mainTitle">Happy Birthday, ${name}!</div>
+        <div id="subTitle">Make a wish and blow candles.</div>
+      `;
 
-      // ---- Mumları oluştur ----
-      // Koordinatlar pasta piksel-art'ının kendi birimlerinde (150x100).
-      // Pasta kubbesinin üstü yaklaşık x:35–110, y:45 civarı.
-      const layer = document.getElementById("candles");
-      const CANDLES_PER_ROW = 6;
-      const CAKE_LEFT = 30; // mumların yayılacağı aralık
-      const CAKE_RIGHT = 115;
-      const CANDLE_BASE_Y = 50; // ilk sıranın tabanı (pastanın arkasında kalır)
-      const ROW_LIFT = 7; // her yeni sıra biraz yukarıda
-      const ORIGIN_X = 57.5; // mum sprite'ının taban ortası (CSS'teki transform-origin)
-      const ORIGIN_Y = 95;
+      const cake = document.getElementById("cake");
+
+      const colors = [
+        "green-candle",
+        "purple-candle",
+        "blue-candle",
+        "yellow-candle",
+      ];
+      const CAKE_VISUAL_WIDTH = 35;
 
       function createCandles(count) {
-        layer.innerHTML = "";
+        cake.innerHTML = "";
+        const CANDLE_VISUAL_WIDTH = 2;
+        const availableWidth = CAKE_VISUAL_WIDTH;
+        const candlesPerRow = 6;
+        const rowCount = Math.ceil(count / candlesPerRow);
+        const shiftAmount = 4;
+
         for (let i = 0; i < count; i++) {
-          const row = Math.floor(i / CANDLES_PER_ROW);
-          const col = i % CANDLES_PER_ROW;
-          const inRow = Math.min(CANDLES_PER_ROW, count - row * CANDLES_PER_ROW);
-
-          const cx =
-            CAKE_LEFT +
-            ((CAKE_RIGHT - CAKE_LEFT) * (col + 1)) / (inRow + 1) +
-            (row % 2 ? 4 : 0);
-          const baseY = CANDLE_BASE_Y - row * ROW_LIFT;
-
           const candle = document.createElement("div");
           candle.classList.add("candle");
-          candle.style.left = `${cx - ORIGIN_X}px`;
-          candle.style.top = `${baseY - ORIGIN_Y}px`;
-          candle.style.zIndex = String(100 - row); // ön sıra önde
-          candle.style.setProperty("--delay", `-${Math.random().toFixed(2)}s`);
-          layer.appendChild(candle);
+          const colorClass = colors[Math.floor(Math.random() * colors.length)];
+          candle.classList.add(colorClass);
+
+          const row = Math.floor(i / candlesPerRow);
+          const col = i % candlesPerRow;
+          const totalCandlesInRow = Math.min(
+            candlesPerRow,
+            count - row * candlesPerRow
+          );
+          const rowSpacing = availableWidth / (totalCandlesInRow + 1);
+
+          const leftBase = rowSpacing * (col + 1) - CANDLE_VISUAL_WIDTH / 2 + 5;
+          const rowShift = row % 2 === 0 ? 0 : shiftAmount;
+
+          candle.style.position = "absolute";
+          candle.style.top = `${10 + row * 3}px`;
+          candle.style.left = `${leftBase - rowShift + 4}px`;
+
+          cake.appendChild(candle);
         }
       }
+
       createCandles(candleCount);
 
-      // ---- Üfleme ----
-      let blown = false;
-
-      function blowOutCandles() {
-        if (blown) return;
-        blown = true;
-
-        document.querySelectorAll(".candle").forEach((candle) => {
-          const delay = Math.random() * 1000;
-          setTimeout(() => {
-            candle.classList.add("blowing"); // kıvılcım karesi
-            setTimeout(() => {
-              candle.classList.remove("blowing");
-              candle.classList.add("blown"); // alevsiz kare
-            }, 250);
-          }, delay);
-        });
-
-        setTimeout(() => {
-          subTitle.textContent = "Yayy! Wishing you the happiest birthday ever!! 🎉";
-        }, 1200);
-      }
-
-      // ---- Mikrofon ile üfleme algılama ----
+      // === Microphone / Blow Detection ===
       async function startMicDetection() {
         try {
-          const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-          const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+          const stream = await navigator.mediaDevices.getUserMedia({
+            audio: true,
+          });
+          const audioContext = new (window.AudioContext ||
+            window.webkitAudioContext)();
           const source = audioContext.createMediaStreamSource(stream);
           const analyser = audioContext.createAnalyser();
           analyser.fftSize = 512;
+
           source.connect(analyser);
 
           const dataArray = new Uint8Array(analyser.frequencyBinCount);
+
+          let blown = false;
 
           function detectBlow() {
             analyser.getByteFrequencyData(dataArray);
 
             let highFreqSum = 0;
             let lowFreqSum = 0;
+
             const midpoint = dataArray.length / 2;
+
             for (let i = 0; i < dataArray.length; i++) {
-              if (i < midpoint) lowFreqSum += dataArray[i];
-              else highFreqSum += dataArray[i];
+              if (i < midpoint) {
+                lowFreqSum += dataArray[i];
+              } else {
+                highFreqSum += dataArray[i];
+              }
             }
 
             const highAvg = highFreqSum / (dataArray.length / 2);
             const lowAvg = lowFreqSum / (dataArray.length / 2);
+
             const ratio = highAvg / (lowAvg + 1);
 
             const BLOW_RATIO_THRESHOLD = 0.5;
+
             if (ratio > BLOW_RATIO_THRESHOLD && !blown) {
+              blown = true;
               blowOutCandles();
             }
+
             requestAnimationFrame(detectBlow);
           }
+
           detectBlow();
         } catch (err) {
           console.error("Mic access error:", err);
-          subTitle.textContent = "Mic not available — tap the cake to blow out the candles!";
         }
       }
 
-      // Mikrofon yoksa/izin verilmediyse pastaya tıklayarak da üflenebilir
-      document.getElementById("cakeContainer").addEventListener("click", blowOutCandles);
+      function blowOutCandles() {
+        const candles = document.querySelectorAll(".candle");
+        candles.forEach((candle) => {
+          const delay = Math.random() * 1000;
+          setTimeout(() => {
+            colors.forEach((color) => {
+              if (candle.classList.contains(color)) {
+                candle.classList.add("blown");
+              }
+            });
+          }, delay);
+        });
+
+        // Update subTitle after short delay
+        setTimeout(() => {
+          const subTitle = document.getElementById("subTitle");
+          subTitle.textContent = `Yayy! Wishing you the happiest birthday ever!! 🎉`;
+        }, 1200);
+      }
 
       startMicDetection();
     </script>
