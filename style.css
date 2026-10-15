@@ -43,6 +43,14 @@
   box-shadow: 55px 35px 0 0 rgba(94,64,64,1), 55px 40px 0 0 rgba(94,64,64,1), 45px 45px 0 0 rgba(94,64,64,1), 50px 45px 0 0 rgba(94,64,64,1), 55px 45px 0 0 rgba(94,64,64,1), 60px 45px 0 0 rgba(94,64,64,1), 65px 45px 0 0 rgba(94,64,64,1), 40px 50px 0 0 rgba(94,64,64,1), 45px 50px 0 0 rgba(255, 255, 255, 1), 50px 50px 0 0 rgba(255, 255, 255, 1), 55px 50px 0 0 rgba(255, 255, 255, 1), 60px 50px 0 0 rgba(255, 255, 255, 1), 65px 50px 0 0 rgba(255, 255, 255, 1), 70px 50px 0 0 rgba(94,64,64,1), 40px 55px 0 0 rgba(94,64,64,1), 45px 55px 0 0 rgba(255, 255, 255, 1), 50px 55px 0 0 rgba(255, 255, 255, 1), 55px 55px 0 0 rgba(255, 255, 255, 1), 60px 55px 0 0 rgba(94,64,64,1), 65px 55px 0 0 rgba(255, 255, 255, 1), 70px 55px 0 0 rgba(94,64,64,1), 40px 60px 0 0 rgba(94,64,64,1), 45px 60px 0 0 rgba(94,64,64,1), 50px 60px 0 0 rgba(94,64,64,1), 55px 60px 0 0 rgba(94,64,64,1), 60px 60px 0 0 rgba(152,199,205,1), 65px 60px 0 0 rgba(94,64,64,1), 70px 60px 0 0 rgba(94,64,64,1), 45px 65px 0 0 rgba(94,64,64,1), 50px 65px 0 0 rgba(152,199,205,1), 55px 65px 0 0 rgba(152,199,205,1), 60px 65px 0 0 rgba(152,199,205,1), 65px 65px 0 0 rgba(94,64,64,1), 45px 70px 0 0 rgba(94,64,64,1), 50px 70px 0 0 rgba(152,199,205,1), 55px 70px 0 0 rgba(152,199,205,1), 60px 70px 0 0 rgba(152,199,205,1), 65px 70px 0 0 rgba(94,64,64,1), 45px 75px 0 0 rgba(94,64,64,1), 50px 75px 0 0 rgba(152,199,205,1), 55px 75px 0 0 rgba(152,199,205,1), 60px 75px 0 0 rgba(152,199,205,1), 65px 75px 0 0 rgba(94,64,64,1), 45px 80px 0 0 rgba(94,64,64,1), 50px 80px 0 0 rgba(152,199,205,1), 55px 80px 0 0 rgba(152,199,205,1), 60px 80px 0 0 rgba(152,199,205,1), 65px 80px 0 0 rgba(94,64,64,1), 45px 85px 0 0 rgba(94,64,64,1), 50px 85px 0 0 rgba(152,199,205,1), 55px 85px 0 0 rgba(152,199,205,1), 60px 85px 0 0 rgba(152,199,205,1), 65px 85px 0 0 rgba(94,64,64,1), 50px 90px 0 0 rgba(94,64,64,1), 55px 90px 0 0 rgba(94,64,64,1), 60px 90px 0 0 rgba(94,64,64,1);height: 5px; width: 5px;
   }
 }
+
+
+/* ==========================================================
+   SAYFA DÜZENİ + MUM YERLEŞİMİ  (yukarıdaki pixel-art'a dokunmaz)
+   Pasta: kendi 5px'lik piksellerinde çizili, 2 kat büyütülüyor.
+   Mumlar: kendi 5px piksellerinde çizili, 0.4 ile küçültülüp pastanın
+   arkasına yerleştiriliyor. Üst ikisi de aynı katmanda 2x ölçekleniyor.
+   ========================================================== */
 html, body { margin: 0; min-height: 100%; }
 
 body {
@@ -60,7 +68,7 @@ body {
   position: relative;
   width: 300px;   /* 150 birim x 2 */
   height: 200px;  /* 100 birim x 2 */
-  margin: 110px auto 0;  /* mumların taşacağı yer */
+  margin: 40px auto 0;  /* üst boşluğu JS mum sıra sayısına göre ayarlar */
   cursor: pointer;
 }
 
@@ -73,24 +81,23 @@ body {
   transform-origin: 0 0;
 }
 
-/*mum*/
+/* amın mumların katmanı (pastanın önünde UMARIM YANİ) */
 .candles {
   position: absolute;
   left: 0;
   top: 0;
   width: 0;
   height: 0;
-  z-index: 0;
+  z-index: 2;
   transform: scale(2);
   transform-origin: 0 0;
 }
 
-
+/* Tek mum: 0.4 ölçek, ölçek merkezi mumun taban ortası (57.5px 95px) */
 .candle {
   transform: scale(0.4);
   transform-origin: 57.5px 95px;
   animation-delay: var(--delay, 0s); /* her mum farklı anda titrer */
 }
 
-.candle.blowing { animation-play-state: paused; animation-delay: -0.75s; } /* kıvılcım karesi */
-.candle.blown   { animation-play-state: paused; animation-delay: -0.95s; } /* alevsiz kare   */
+.candle.blowing, .candle.blown { animation-play-state: paused; }
