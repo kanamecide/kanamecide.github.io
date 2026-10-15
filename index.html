@@ -202,4 +202,24 @@
               else highFreqSum += dataArray[i];
             }
 
+            const highAvg = highFreqSum / (dataArray.length / 2);
+            const lowAvg = lowFreqSum / (dataArray.length / 2);
+            const ratio = highAvg / (lowAvg + 1);
+
+            const BLOW_RATIO_THRESHOLD = 0.5;
+            if (ratio > BLOW_RATIO_THRESHOLD && !blown) {
+              blowOutCandles();
+            }
+            requestAnimationFrame(detectBlow);
+          }
+          detectBlow();
+        } catch (err) {
+          console.error("Mic access error:", err);
     
+      // Mikrofon yoksa/izin verilmediyse pastaya tıklayarak da üflenebilir
+      document.body.addEventListener("click", blowOutCandles); // sayfanın herhangi bir yerine dokun
+
+      startMicDetection();
+    </script>
+  </body>
+</html>
